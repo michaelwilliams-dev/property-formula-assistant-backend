@@ -1,28 +1,46 @@
-<!-- public/assistant.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Property Assistant</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 40px;
-      max-width: 600px;
-      margin: auto;
+// assistant_script.js
+// ISO Timestamp: 🕒 2025-07-31T18:30:00Z (PropertyFormula Assistant frontend UX standard)
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("assistant-form");
+  const responseBox = document.getElementById("response");
+  const askButton = document.getElementById("ask");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const question = document.getElementById("question").value.trim();
+    const email = document.getElementById("email").value.trim();
+
+    if (!question) {
+      responseBox.textContent = '❌ Please enter a question.';
+      return;
     }
 
-    h2 {
-      font-size: 1.4em;
-      margin-bottom: 10px;
+    responseBox.textContent = "⏳ Processing your question. Please wait...";
+    askButton.disabled = true;
+
+    try {
+      const res = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, email })
+      });
+
+      const data = await res.json();
+
+      if (res.status !== 200) {
+        responseBox.textContent = `❌ Error: ${data?.error || 'Something went wrong.'}`;
+      } else {
+        responseBox.textContent = data.answer?.trim() || '⚠️ No answer returned.';
+      }
+    } catch (err) {
+      responseBox.textContent = '❌ Failed to contact assistant: ' + err.message;
     }
 
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      box-sizing: border-box;
-    }
+    askButton.disabled = false;
+  });
+});
 
     pre {
       background: #f9f9f9;
