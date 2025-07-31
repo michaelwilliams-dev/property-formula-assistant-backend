@@ -1,0 +1,13 @@
+<!-- test.html -->
+<!-- ISO Timestamp: 🕒 2025-07-31T23:25:00Z -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Static Test Page</title>
+</head>
+<body>
+  <h1>✅ Static File Served Successfully</h1>
+  <p>This page is being served from the <code>public/</code> folder.</p>
+</body>
+</html>
