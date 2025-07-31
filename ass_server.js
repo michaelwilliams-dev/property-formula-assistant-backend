@@ -34,7 +34,7 @@ app.post('/ask', async (req, res) => {
   try {
     const embeddingRes = await openai.embeddings.create({
       model: 'text-embedding-3-small',
-      input: question
+      input: [question]
     });
 
     const queryEmbedding = embeddingRes.data[0].embedding;
