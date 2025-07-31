@@ -1,35 +1,44 @@
 // assistant_script.js
-// ISO Timestamp: 2025-07-30T19:30:00Z
+// ISO Timestamp: 🕒 2025-07-31T19:10:00Z (Stable – copied from blog structure)
 
-// Set timestamp
-const timestamp = new Date().toISOString();
-document.getElementById('iso-timestamp').textContent = timestamp;
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("iso-timestamp").textContent = new Date().toISOString();
 
-// Event handler
-const askBtn = document.getElementById('ask');
-askBtn.addEventListener('click', async () => {
-  const question = document.getElementById('question').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const output = document.getElementById('response');
+  const askButton = document.getElementById("ask");
+  const questionInput = document.getElementById("question");
+  const emailInput = document.getElementById("email");
+  const responseBox = document.getElementById("response");
 
-  if (!question) {
-    output.textContent = '❌ Please enter a question.';
-    return;
-  }
+  askButton.addEventListener("click", async () => {
+    const question = questionInput.value.trim();
+    const email = emailInput.value.trim();
 
-  output.textContent = '⏳ Thinking...';
+    if (!question) {
+      responseBox.textContent = '❌ Please enter a question.';
+      return;
+    }
 
-  try {
-    const res = await fetch('/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, email })
-    });
+    responseBox.textContent = '⏳ Processing your request...';
+    askButton.disabled = true;
 
-    const data = await res.json();
-    output.textContent = data.answer || '⚠️ No answer returned.';
-  } catch (err) {
-    console.error(err);
-    output.textContent = '❌ Failed to contact assistant: ' + err.message;
-  }
+    try {
+      const res = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, email })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        responseBox.textContent = `❌ Error: ${data?.error || 'Something went wrong.'}`;
+      } else {
+        responseBox.textContent = data.answer?.trim() || '⚠️ No answer returned.';
+      }
+    } catch (err) {
+      responseBox.textContent = '❌ Failed to contact assistant: ' + err.message;
+    }
+
+    askButton.disabled = false;
+  });
 });
