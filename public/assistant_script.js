@@ -1,9 +1,7 @@
 // assistant_script.js
-// ISO Timestamp: 🕒 2025-07-31T19:10:00Z (Stable – copied from blog structure)
+// ISO Timestamp: 🕒 2025-07-31T20:00:00Z (Clean working version – assistant)
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("iso-timestamp").textContent = new Date().toISOString();
-
   const askButton = document.getElementById("ask");
   const questionInput = document.getElementById("question");
   const emailInput = document.getElementById("email");
@@ -31,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
 
       if (!res.ok) {
-        responseBox.textContent = `❌ Error: ${data?.error || 'Something went wrong.'}`;
+        responseBox.textContent = `❌ Error: ${data?.error || 'Unknown error'}`;
       } else {
         responseBox.textContent = data.answer?.trim() || '⚠️ No answer returned.';
       }
