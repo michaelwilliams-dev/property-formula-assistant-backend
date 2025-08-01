@@ -1,5 +1,5 @@
 git add .gitignore
-git commit -m "Ignore large vector_index.json file"
+
 # Ignore local environment settings
 .env
 .env.local
