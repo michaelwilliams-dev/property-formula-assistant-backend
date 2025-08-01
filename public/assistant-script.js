@@ -1,18 +1,17 @@
 // assistant_script.js
-// ISO Timestamp: 2025-07-30T19:30:00Z
-
-// assistant_script.js
-// ISO Timestamp: 🕒 2025-08-01T09:50:00Z
+// ISO Timestamp: 🕒 2025-08-01T10:00:00Z
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById('iso-timestamp').textContent = new Date().toISOString();
-
   const askBtn = document.getElementById('ask');
   const output = document.getElementById('response');
+  const emailInput = document.getElementById('email');
+  const questionInput = document.getElementById('question');
+
+  document.getElementById('iso-timestamp').textContent = new Date().toISOString();
 
   askBtn.addEventListener('click', async () => {
-    const question = document.getElementById('question').value.trim();
-    const email = document.getElementById('email').value.trim();
+    const question = questionInput.value.trim();
+    const email = emailInput.value.trim();
 
     if (!question) {
       output.textContent = '❌ Please enter a question.';
@@ -28,15 +27,14 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ question, email })
       });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Server error: ${errorText}`);
-      }
-
       const data = await res.json();
-      output.textContent = data.answer || '⚠️ No answer returned.';
+
+      if (!res.ok) {
+        output.textContent = `❌ Error: ${data.error || 'Unknown error'}`;
+      } else {
+        output.textContent = data.answer || '⚠️ No answer returned.';
+      }
     } catch (err) {
-      console.error("❌ JS fetch error:", err);
       output.textContent = '❌ Failed to contact assistant: ' + err.message;
     }
   });
