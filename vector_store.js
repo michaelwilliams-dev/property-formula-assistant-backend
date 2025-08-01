@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function loadIndex() {
-  const indexPath = path.join(__dirname, 'vector_index.json');
+  const indexPath = '/mnt/data/vector_index.json';
   const data = await fs.readFile(indexPath, 'utf-8');
   const parsed = JSON.parse(data);
 
