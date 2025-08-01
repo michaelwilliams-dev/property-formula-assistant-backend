@@ -1,33 +1,23 @@
-// vector_store.js
-// ISO Timestamp: 🕒 2025-08-01T18:00:00Z (Production-ready – index load logging included)
-
 import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { OpenAI } from 'openai';
 
-console.log("🟢 vector_store.js loaded: ISO 2025-08-01T18:00:00Z — full input logging");
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+console.log("🟢 vector_store.js loaded from /mnt/data/vector_index.json");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function loadIndex() {
-  const indexPath = '/mnt/data/vector_index.json';
-  const data = await fs.readFile(indexPath, 'utf-8');
-  const parsed = JSON.parse(data);
+  const raw = await fs.readFile('/mnt/data/vector_index.json', 'utf-8');
+  const vectorIndex = JSON.parse(raw);
 
-  const count = parsed.vectors?.length || 0;
-  console.log("📦 Loaded vector index with", count, "chunks");
+  const count = vectorIndex.vectors?.length || 0;
+  console.log(`📦 Loaded vector index with ${count} chunks`);
 
-  return parsed.vectors || [];
+  return vectorIndex.vectors || [];
 }
 
 export async function searchIndex(rawQuery, index) {
   const query = (typeof rawQuery === 'string' ? rawQuery : String(rawQuery || '')).trim();
 
-  // 🔍 Debug logs
   console.log("🧪 [FAISS] Raw query:", rawQuery);
   console.log("🧪 [FAISS] Cleaned query:", query);
   console.log("🧪 [FAISS] Final input array for OpenAI:", [query]);
