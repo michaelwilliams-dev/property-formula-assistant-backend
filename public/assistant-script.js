@@ -1,9 +1,10 @@
 // assistant_script.js
 // ISO Timestamp: 2025-07-30T19:30:00Z
 
-// Set timestamp
+// Set timestamp safely
 const timestamp = new Date().toISOString();
-document.getElementById('iso-timestamp').textContent = timestamp;
+const isoEl = document.getElementById('iso-timestamp');
+if (isoEl) isoEl.textContent = timestamp;
 
 // Event handler
 const askBtn = document.getElementById('ask');
