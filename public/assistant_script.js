@@ -1,5 +1,4 @@
-// assistant_script.js
-// ISO Timestamp: 🕒 2025-08-01T10:15:00Z (Minimal clean test)
+console.log("✅ assistant_script.js is loaded");  // Add this line
 
 document.addEventListener("DOMContentLoaded", () => {
   const askBtn = document.getElementById('ask');
