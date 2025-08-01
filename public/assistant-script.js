@@ -1,4 +1,4 @@
-console.log("✅ assistant_script.js is loaded");  // Add this line
+console.log("✅ assistant-script.js is loaded");  // Add this line
 
 document.addEventListener("DOMContentLoaded", () => {
   const askBtn = document.getElementById('ask');
