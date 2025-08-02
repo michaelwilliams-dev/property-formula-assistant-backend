@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-07-31T20:20:00Z (Assistant backend – FAISS + OpenAI)
+// ISO Timestamp: 🕒 2025-08-02T11:05:00Z (Assistant backend – Clean FAISS formatting)
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -32,6 +32,17 @@ async function queryFaissIndex(question) {
   return matches.map(match => match.text);
 }
 
+// ✅ NEW: Format FAISS chunks for readability
+function formatFaissChunks(chunks) {
+  return chunks.map((chunk, i) => {
+    const clean = chunk
+      .replace(/\s+/g, ' ')                      // Normalize whitespace
+      .replace(/\.([^ \n])/g, '. $1')            // Space after period
+      .trim();
+    return `Section ${i + 1}:\n\n${clean}`;
+  }).join('\n\n');
+}
+
 app.post('/ask', async (req, res) => {
   const { question, email } = req.body;
   if (!question) return res.status(400).json({ error: 'Missing question' });
@@ -39,7 +50,7 @@ app.post('/ask', async (req, res) => {
   try {
     const timestamp = new Date().toISOString();
     const faissContext = await queryFaissIndex(question);
-    const context = faissContext.join('\n');
+    const context = formatFaissChunks(faissContext);  // ✅ replaced
 
     const prompt = `You are a UK-based property assistant.
 Answer this question using only the content below. Do not guess.
