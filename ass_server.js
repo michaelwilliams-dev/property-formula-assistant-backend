@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-02T11:30:00Z (RICS prompt refinement – plain-English surveyor tone)
+// ISO Timestamp: 🕒 2025-08-02T11:05:00Z (Assistant backend – FAISS with semantic filtering)
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -29,7 +29,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 async function queryFaissIndex(question) {
   const index = await loadIndex();
   const matches = await searchIndex(question, index);
-  return matches.map(match => match.text);
+  const filtered = matches.filter(match => match.score >= 0.03); // ✅ Semantic filter
+  return filtered.map(match => match.text);
 }
 
 app.post('/ask', async (req, res) => {
@@ -41,15 +42,12 @@ app.post('/ask', async (req, res) => {
     const faissContext = await queryFaissIndex(question);
     const context = faissContext.join('\n\n');
 
-    const prompt = `You are an experienced RICS-qualified surveyor advising a UK client.
-
-Answer their question using only the indexed material provided below. Use clear, plain English. Do not use legal or technical jargon unless necessary, and explain terms simply if used.
-
-Speak as if you're advising a client who is considering whether to instruct a survey or proceed with a property. Be concise, factual, and helpful — like a trusted professional. Do not speculate or guess.
+    const prompt = `You are an expert RICS property surveyor. Use the content provided below to clearly answer the client's question. 
+Your reply must be clear, practical, and easy to understand. Avoid legal jargon. If no information is available, state so plainly.
 
 Question: "${question}"
 
-Source material:
+Content:
 ${context}`;
 
     const completion = await openai.chat.completions.create({
@@ -71,12 +69,14 @@ ${openaiAnswer || '[No AI answer generated]'}`;
 
     if (email && email.includes('@')) {
       try {
+        // PDF
         const pdfDoc = new PDFDocument();
         let pdfBuffer = Buffer.alloc(0);
         pdfDoc.on('data', chunk => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
         pdfDoc.text(combinedAnswer);
         pdfDoc.end();
 
+        // DOCX
         const doc = new Document({
           sections: [{ children: [new Paragraph({ children: [new TextRun(combinedAnswer)] })] }],
         });
