@@ -1,5 +1,5 @@
 // vector_store.js
-// ISO Timestamp: 🕒 2025-08-02T18:45:00Z (Render disk version – stable + score logging)
+// ISO Timestamp: 🕒 2025-08-02T18:45:00Z (Render disk version – stable + score logging + format fallback)
 
 import fs from 'fs/promises';
 import { OpenAI } from 'openai';
@@ -9,13 +9,16 @@ console.log("🟢 vector_store.js loaded: using /mnt/data/vector_index.json");
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function loadIndex() {
+  console.log("📁 Attempting to load index from /mnt/data/vector_index.json");
+
   const raw = await fs.readFile('/mnt/data/vector_index.json', 'utf-8');
-  const vectorIndex = JSON.parse(raw);
+  const parsed = JSON.parse(raw);
 
-  const count = vectorIndex.vectors?.length || 0;
+  const vectors = Array.isArray(parsed) ? parsed : parsed.vectors || [];
+  const count = vectors.length;
+
   console.log(`📦 Loaded vector index with ${count} chunks from disk`);
-
-  return vectorIndex.vectors || [];
+  return vectors;
 }
 
 export async function searchIndex(rawQuery, index) {
