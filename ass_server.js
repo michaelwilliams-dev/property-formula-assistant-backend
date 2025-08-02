@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-02T11:05:00Z (Assistant backend – Clean FAISS formatting)
+// ISO Timestamp: 🕒 2025-08-02T11:30:00Z (FAISS + OpenAI + Readable Sections + Semantic Threshold)
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -14,7 +14,6 @@ import { Buffer } from 'buffer';
 import { loadIndex, searchIndex } from './vector_store.js';
 
 dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -26,21 +25,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// ✅ Format chunks and apply semantic relevance filter
 async function queryFaissIndex(question) {
   const index = await loadIndex();
   const matches = await searchIndex(question, index);
-  return matches.map(match => match.text);
-}
 
-// ✅ NEW: Format FAISS chunks for readability
-function formatFaissChunks(chunks) {
-  return chunks.map((chunk, i) => {
-    const clean = chunk
-      .replace(/\s+/g, ' ')                      // Normalize whitespace
-      .replace(/\.([^ \n])/g, '. $1')            // Space after period
+  const relevant = matches.filter(m => m.score > 0.72);
+  return relevant.map((match, i) => {
+    const cleaned = match.text
+      .replace(/\s+/g, ' ')
+      .replace(/\.([^ \n])/g, '. $1')
       .trim();
-    return `Section ${i + 1}:\n\n${clean}`;
-  }).join('\n\n');
+    return `Section ${i + 1}:\n\n${cleaned}`;
+  });
 }
 
 app.post('/ask', async (req, res) => {
@@ -49,11 +46,11 @@ app.post('/ask', async (req, res) => {
 
   try {
     const timestamp = new Date().toISOString();
-    const faissContext = await queryFaissIndex(question);
-    const context = formatFaissChunks(faissContext);  // ✅ replaced
+    const faissSections = await queryFaissIndex(question);
+    const context = faissSections.join('\n\n');
 
     const prompt = `You are a UK-based property assistant.
-Answer this question using only the content below. Do not guess.
+Answer this question using only the content below. Do not guess or make up content.
 
 Question: "${question}"
 
@@ -101,27 +98,25 @@ ${openaiAnswer || '[No AI answer generated]'}`;
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            Messages: [
-              {
-                From: { Email: "noreply@securemaildrop.uk", Name: "Secure Maildrop" },
-                To: [{ Email: email }],
-                Subject: `Your Property Assistant Answer`,
-                TextPart: combinedAnswer,
-                HTMLPart: combinedAnswer.split('\n').map(line => `<p>${line}</p>`).join(''),
-                Attachments: [
-                  {
-                    ContentType: "application/pdf",
-                    Filename: `answer.pdf`,
-                    Base64Content: pdfBuffer.toString('base64')
-                  },
-                  {
-                    ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    Filename: `answer.docx`,
-                    Base64Content: docBuffer.toString('base64')
-                  }
-                ]
-              }
-            ]
+            Messages: [{
+              From: { Email: "noreply@securemaildrop.uk", Name: "Secure Maildrop" },
+              To: [{ Email: email }],
+              Subject: `Your Property Assistant Answer`,
+              TextPart: combinedAnswer,
+              HTMLPart: combinedAnswer.split('\n').map(line => `<p>${line}</p>`).join(''),
+              Attachments: [
+                {
+                  ContentType: "application/pdf",
+                  Filename: `answer.pdf`,
+                  Base64Content: pdfBuffer.toString('base64')
+                },
+                {
+                  ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                  Filename: `answer.docx`,
+                  Base64Content: docBuffer.toString('base64')
+                }
+              ]
+            }]
           })
         });
 
