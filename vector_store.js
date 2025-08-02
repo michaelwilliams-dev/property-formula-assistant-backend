@@ -40,7 +40,7 @@ export async function searchIndex(rawQuery, index) {
   }));
 
   // ✅ Filter by similarity threshold
-  const threshold = 0.03;
+  const threshold = 0.01;
   const filtered = scoredChunks.filter(item => item.score >= threshold);
 
   console.log(`📊 Top ${filtered.length} FAISS matches (score ≥ ${threshold}):`);
