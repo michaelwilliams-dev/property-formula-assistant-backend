@@ -1,5 +1,5 @@
 // vector_store.js
-// ISO Timestamp: 🕒 2025-08-02T18:45:00Z (Render disk version – stable)
+// ISO Timestamp: 🕒 2025-08-02T18:45:00Z (Render disk version – stable + score logging)
 
 import fs from 'fs/promises';
 import { OpenAI } from 'openai';
@@ -42,7 +42,14 @@ export async function searchIndex(rawQuery, index) {
     return { ...item, score: dot };
   });
 
-  return scores.sort((a, b) => b.score - a.score).slice(0, 3);
+  const top = scores.sort((a, b) => b.score - a.score).slice(0, 3);
+
+  console.log("📊 Top 3 FAISS matches:");
+  top.forEach((s, i) =>
+    console.log(` ${i + 1}: Score=${s.score.toFixed(4)} — Preview="${s.text.slice(0, 80)}"`)
+  );
+
+  return top;
 }
 
 function dotProduct(a, b) {
