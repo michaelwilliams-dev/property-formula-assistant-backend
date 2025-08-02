@@ -1,12 +1,15 @@
+// vector_store.js
+// ISO Timestamp: 🕒 2025-08-01T19:30:00Z (Corrected for Render absolute disk path)
+
 import fs from 'fs/promises';
 import { OpenAI } from 'openai';
 
-console.log("🟢 vector_store.js loaded from /mnt/data/vector_index.json");
+console.log("🟢 vector_store.js loaded from /opt/render/project/src/vector_index.json");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function loadIndex() {
-  const raw = await fs.readFile('/mnt/data/vector_index.json', 'utf-8');
+  const raw = await fs.readFile('/opt/render/project/src/vector_index.json', 'utf-8');  // ✅ Correct absolute path
   const vectorIndex = JSON.parse(raw);
 
   const count = vectorIndex.vectors?.length || 0;
