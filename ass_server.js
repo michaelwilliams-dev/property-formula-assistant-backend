@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-02T11:30:00Z (FAISS + OpenAI + Readable Sections + Semantic Threshold)
+// ISO Timestamp: 🕒 2025-08-02T11:05:00Z (Last stable version with working FAISS + email output)
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -14,6 +14,7 @@ import { Buffer } from 'buffer';
 import { loadIndex, searchIndex } from './vector_store.js';
 
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -25,19 +26,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ✅ Format chunks and apply semantic relevance filter
 async function queryFaissIndex(question) {
   const index = await loadIndex();
   const matches = await searchIndex(question, index);
-
-  const relevant = matches.filter(m => m.score > 0.72);
-  return relevant.map((match, i) => {
-    const cleaned = match.text
-      .replace(/\s+/g, ' ')
-      .replace(/\.([^ \n])/g, '. $1')
-      .trim();
-    return `Section ${i + 1}:\n\n${cleaned}`;
-  });
+  return matches.map(match => match.text);
 }
 
 app.post('/ask', async (req, res) => {
@@ -46,11 +38,11 @@ app.post('/ask', async (req, res) => {
 
   try {
     const timestamp = new Date().toISOString();
-    const faissSections = await queryFaissIndex(question);
-    const context = faissSections.join('\n\n');
+    const faissContext = await queryFaissIndex(question);
+    const context = faissContext.join('\n\n');
 
     const prompt = `You are a UK-based property assistant.
-Answer this question using only the content below. Do not guess or make up content.
+Answer this question using only the content below. Do not guess.
 
 Question: "${question}"
 
@@ -79,15 +71,13 @@ ${openaiAnswer || '[No AI answer generated]'}`;
         // PDF
         const pdfDoc = new PDFDocument();
         let pdfBuffer = Buffer.alloc(0);
-        pdfDoc.on('data', (chunk) => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
+        pdfDoc.on('data', chunk => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
         pdfDoc.text(combinedAnswer);
         pdfDoc.end();
 
         // DOCX
         const doc = new Document({
-          sections: [{
-            children: [new Paragraph({ children: [new TextRun(combinedAnswer)] })],
-          }],
+          sections: [{ children: [new Paragraph({ children: [new TextRun(combinedAnswer)] })] }],
         });
         const docBuffer = await Packer.toBuffer(doc);
 
