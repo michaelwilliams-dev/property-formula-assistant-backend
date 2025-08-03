@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-02T11:05:00Z (Assistant backend – FAISS with semantic filtering)
+// ISO Timestamp: 🕒 2025-08-03T13:24:00Z (Assistant backend – FAISS with semantic filtering + blog proxy route)
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -124,6 +124,18 @@ ${openaiAnswer || '[No AI answer generated]'}`;
     res.status(500).json({ error: 'Assistant request failed' });
   }
 });
+
+// ✳️ BEGIN: TEMPORARY ROUTE FOR BLOG VECTOR INDEX ACCESS
+app.get('/vector-index', async (req, res) => {
+  try {
+    const index = await loadIndex();
+    res.json(index);
+  } catch (err) {
+    console.error('[ASSISTANT] Failed to serve /vector-index:', err.message);
+    res.status(500).send('Unable to load index');
+  }
+});
+// ✳️ END: TEMPORARY ROUTE FOR BLOG VECTOR INDEX ACCESS
 
 app.get('/', (req, res) => {
   res.send('Property Assistant backend is live.');
