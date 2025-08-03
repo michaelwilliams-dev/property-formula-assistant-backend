@@ -43,12 +43,17 @@ app.post('/ask', async (req, res) => {
     const context = faissContext.join('\n\n');
 
     const prompt = `You are an expert RICS property surveyor. Use the content provided below to clearly answer the client's question. 
-Your reply must be clear, practical, and easy to understand. Avoid legal jargon. If no information is available, state so plainly.
+Your reply must be clear, practical, and easy to understand. Avoid legal jargon. If no information is available, state so plainly. Do not make anything up.
 
 Question: "${question}"
 
-Content:
-${context}`;
+Documents:
+${context}
+
+Please format your answer with:
+- A brief headline
+- A clear explanation
+- A short summary at the end.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
