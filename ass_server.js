@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-03T18:10:00Z (Assistant backend – fixed FAISS chunk usage)
+// ISO Timestamp: 🕒 2025-08-03T18:40:00Z – Assistant with formatted public output
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -21,7 +21,6 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Static files (for assistant.html, script.js, style.css)
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 
@@ -42,18 +41,24 @@ app.post('/ask', async (req, res) => {
     const timestamp = new Date().toISOString();
 
     const faissContext = await queryFaissIndex(question);
-
-    // ✅ New logic: keep all relevant filtered chunks (no slicing)
     const context = [...new Set(faissContext.map(text => text.trim()))]
       .filter(text => text.length > 30)
       .join('\n\n');
 
-    const prompt = `You are an expert RICS property surveyor. Use the content provided below to clearly answer the client's question. 
-Your reply must be clear, practical, and easy to understand. Avoid legal jargon. If no information is available, state so plainly.
+    const prompt = `You are an expert RICS property surveyor. Based only on the provided content, write a clear, structured, public-friendly answer to the client's question below. 
 
-Question: "${question}"
+Your reply must include:
+- A headline
+- A short introduction
+- 2–4 bullet points
+- A brief wrap-up
 
-Content:
+Do not include legal references. Avoid jargon. Use plain English.
+If the content does not contain an answer, say so clearly.
+
+Client question: "${question}"
+
+Relevant content:
 ${context}`;
 
     const completion = await openai.chat.completions.create({
@@ -64,13 +69,9 @@ ${context}`;
 
     const openaiAnswer = completion.choices[0].message.content;
 
-    const combinedAnswer = `🏠 Property Assistant Response
+    const finalResponse = `🏠 Property Assistant Response
 🕒 Generated at: ${timestamp}
 
-📘 From indexed material (FAISS):
-${context || '[No indexed content found]'}
-
-🧠 OpenAI Completion:
 ${openaiAnswer || '[No AI answer generated]'}`;
 
     if (email && email.includes('@')) {
@@ -78,11 +79,11 @@ ${openaiAnswer || '[No AI answer generated]'}`;
         const pdfDoc = new PDFDocument();
         let pdfBuffer = Buffer.alloc(0);
         pdfDoc.on('data', chunk => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
-        pdfDoc.text(combinedAnswer);
+        pdfDoc.text(finalResponse);
         pdfDoc.end();
 
         const doc = new Document({
-          sections: [{ children: [new Paragraph({ children: [new TextRun(combinedAnswer)] })] }],
+          sections: [{ children: [new Paragraph({ children: [new TextRun(finalResponse)] })] }],
         });
         const docBuffer = await Packer.toBuffer(doc);
 
@@ -97,8 +98,8 @@ ${openaiAnswer || '[No AI answer generated]'}`;
               From: { Email: "noreply@securemaildrop.uk", Name: "Secure Maildrop" },
               To: [{ Email: email }],
               Subject: `Your Property Assistant Answer`,
-              TextPart: combinedAnswer,
-              HTMLPart: combinedAnswer.split('\n').map(line => `<p>${line}</p>`).join(''),
+              TextPart: finalResponse,
+              HTMLPart: finalResponse.split('\n').map(line => `<p>${line}</p>`).join(''),
               Attachments: [
                 {
                   ContentType: "application/pdf",
@@ -122,7 +123,7 @@ ${openaiAnswer || '[No AI answer generated]'}`;
       }
     }
 
-    res.json({ question, answer: combinedAnswer, timestamp });
+    res.json({ question, answer: finalResponse, timestamp });
   } catch (err) {
     console.error('❌ Assistant request failed:', err);
     res.status(500).json({ error: 'Assistant request failed' });
