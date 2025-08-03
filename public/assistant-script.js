@@ -3,7 +3,7 @@
 
 console.log("✅ assistant-script.js is loaded");
 
-document.addEventListener("DOMContentLoaded today", () => {
+document.addEventListener("DOMContentLoaded", () => {
   const askBtn = document.getElementById('ask');
   const output = document.getElementById('response');
   const emailInput = document.getElementById('email');
