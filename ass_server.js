@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-03T13:24:00Z (Assistant backend – FAISS with semantic filtering + blog proxy route)
+// ISO Timestamp: 🕒 2025-08-03T18:10:00Z (Assistant backend – fixed FAISS chunk usage)
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -21,15 +21,16 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(bodyParser.json());
+// Static files (for assistant.html, script.js, style.css)
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(bodyParser.json());
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function queryFaissIndex(question) {
   const index = await loadIndex();
   const matches = await searchIndex(question, index);
-  const filtered = matches.filter(match => match.score >= 0.03); // ✅ Semantic filter
+  const filtered = matches.filter(match => match.score >= 0.03);
   return filtered.map(match => match.text);
 }
 
@@ -39,21 +40,21 @@ app.post('/ask', async (req, res) => {
 
   try {
     const timestamp = new Date().toISOString();
+
     const faissContext = await queryFaissIndex(question);
-    const context = faissContext.join('\n\n');
+
+    // ✅ New logic: keep all relevant filtered chunks (no slicing)
+    const context = [...new Set(faissContext.map(text => text.trim()))]
+      .filter(text => text.length > 30)
+      .join('\n\n');
 
     const prompt = `You are an expert RICS property surveyor. Use the content provided below to clearly answer the client's question. 
-Your reply must be clear, practical, and easy to understand. Avoid legal jargon. If no information is available, state so plainly. Do not make anything up.
+Your reply must be clear, practical, and easy to understand. Avoid legal jargon. If no information is available, state so plainly.
 
 Question: "${question}"
 
-Documents:
-${context}
-
-Please format your answer with:
-- A brief headline
-- A clear explanation
-- A short summary at the end.`;
+Content:
+${context}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -74,14 +75,12 @@ ${openaiAnswer || '[No AI answer generated]'}`;
 
     if (email && email.includes('@')) {
       try {
-        // PDF
         const pdfDoc = new PDFDocument();
         let pdfBuffer = Buffer.alloc(0);
         pdfDoc.on('data', chunk => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
         pdfDoc.text(combinedAnswer);
         pdfDoc.end();
 
-        // DOCX
         const doc = new Document({
           sections: [{ children: [new Paragraph({ children: [new TextRun(combinedAnswer)] })] }],
         });
@@ -130,20 +129,16 @@ ${openaiAnswer || '[No AI answer generated]'}`;
   }
 });
 
-// ✳️ BEGIN: TEMPORARY ROUTE FOR BLOG VECTOR INDEX ACCESS
-app.get('/vector-index', async (req, res) => {
-  try {
-    const index = await loadIndex();
-    res.json(index);
-  } catch (err) {
-    console.error('[ASSISTANT] Failed to serve /vector-index:', err.message);
-    res.status(500).send('Unable to load index');
-  }
-});
-// ✳️ END: TEMPORARY ROUTE FOR BLOG VECTOR INDEX ACCESS
-
 app.get('/', (req, res) => {
-  res.send('Property Assistant backend is live.');
+  res.send('✅ Property Assistant backend is live.');
+});
+
+app.get('/assistant.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'assistant.html'));
+});
+
+app.get('/assistant', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'assistant.html'));
 });
 
 app.listen(PORT, () => {
