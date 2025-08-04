@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-03T18:40:00Z – Assistant with formatted public output
+// ISO Timestamp: 🕒 2025-08-04T18:35:00Z – Assistant with formatted public output + Email Footer Branding
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -69,10 +69,7 @@ ${context}`;
 
     const openaiAnswer = completion.choices[0].message.content;
 
-    const finalResponse = `🏠 Property Assistant Response
-🕒 Generated at: ${timestamp}
-
-${openaiAnswer || '[No AI answer generated]'}`;
+    const finalResponse = `🏠 Property Assistant Response\n🕒 Generated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}`;
 
     if (email && email.includes('@')) {
       try {
