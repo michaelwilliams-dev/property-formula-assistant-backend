@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T18:35:00Z – Assistant with formatted public output + Email Footer Branding + Word readability fix
+// ISO Timestamp: 🕒 2025-08-04T19:10:00Z – Footer now embedded in Word, PDF, and email outputs
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -45,7 +45,21 @@ app.post('/ask', async (req, res) => {
       .filter(text => text.length > 30)
       .join('\n\n');
 
-    const prompt = `You are an expert RICS property surveyor. Based only on the provided content, write a clear, structured, public-friendly answer to the client's question below. \n\nYour reply must include:\n- A headline\n- A short introduction\n- 2–4 bullet points\n- A brief wrap-up\n\nDo not include legal references. Avoid jargon. Use plain English.\nIf the content does not contain an answer, say so clearly.\n\nClient question: "${question}"\n\nRelevant content:\n${context}`;
+    const prompt = `You are an expert RICS property surveyor. Based only on the provided content, write a clear, structured, public-friendly answer to the client's question below. 
+
+Your reply must include:
+- A headline
+- A short introduction
+- 2–4 bullet points
+- A brief wrap-up
+
+Do not include legal references. Avoid jargon. Use plain English.
+If the content does not contain an answer, say so clearly.
+
+Client question: "${question}"
+
+Relevant content:
+${context}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -55,16 +69,24 @@ app.post('/ask', async (req, res) => {
 
     const openaiAnswer = completion.choices[0].message.content;
 
-    const finalResponse = `🏠 Property Assistant Response\n🕒 Generated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}`;
+    const emailFooter = '\n\n' +
+      '© AIVS Software Limited. All rights reserved.\n' +
+      'Mob: 07968 184624 | Web: AIVS.uk\n' +
+      'The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice. ' +
+      'AIVS Software Limited accepts no liability for any action taken based on its contents.';
+
+    const finalResponse = `🏠 Property Assistant Response\n🕒 Generated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}${emailFooter}`;
 
     if (email && email.includes('@')) {
       try {
+        // PDF generation
         const pdfDoc = new PDFDocument();
         let pdfBuffer = Buffer.alloc(0);
         pdfDoc.on('data', chunk => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
         pdfDoc.text(finalResponse);
         pdfDoc.end();
 
+        // Word generation
         const doc = new Document({
           sections: [
             {
@@ -74,14 +96,7 @@ app.post('/ask', async (req, res) => {
             }
           ]
         });
-
         const docBuffer = await Packer.toBuffer(doc);
-
-        console.log("📤 SENDING EMAIL CONTENT:", {
-          subject: `Your Property Assistant Answer`,
-          text: finalResponse,
-          html: finalResponse.split('\n').map(line => `<p>${line}</p>`).join('')
-        });
 
         const mailjetRes = await fetch("https://api.mailjet.com/v3.1/send", {
           method: "POST",
@@ -94,20 +109,8 @@ app.post('/ask', async (req, res) => {
               From: { Email: "noreply@securemaildrop.uk", Name: "Secure Maildrop" },
               To: [{ Email: email }],
               Subject: `Your Property Assistant Answer`,
-              TextPart:
-                finalResponse + '\n\n' +
-                '© AIVS Software Limited. All rights reserved.\n' +
-                'Mob: 07968 184624 | Web: AIVS.uk\n' +
-                'The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice. AIVS Software Limited accepts no liability for any action taken based on its contents.',
-              HTMLPart:
-                finalResponse.split('\n').map(line => `<p>${line}</p>`).join('') +
-                `<p style="font-size: 0.8em; color: #888;">
-                  © AIVS Software Limited. All rights reserved.<br>
-                  <strong>Mob:</strong> 07968 184624 &nbsp; | &nbsp;
-                  <strong>Web:</strong> <a href="https://aivs.uk" target="_blank">AIVS.uk</a><br>
-                  The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice.
-                  AIVS Software Limited accepts no liability for any action taken based on its contents.
-                </p>`,
+              TextPart: finalResponse,
+              HTMLPart: finalResponse.split('\n').map(line => `<p>${line}</p>`).join(''),
               Attachments: [
                 {
                   ContentType: "application/pdf",
@@ -153,4 +156,3 @@ app.get('/assistant', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🟢 Property Assistant running on port ${PORT}`);
 });
-
