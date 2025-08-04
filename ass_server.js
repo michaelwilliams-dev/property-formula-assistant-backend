@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T19:45:00Z – Dynamic chunk count added to footer
+// ISO Timestamp: 🕒 2025-08-04T19:50:00Z – Fixed structure + dynamic chunk count footer
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -45,7 +45,20 @@ app.post('/ask', async (req, res) => {
     const chunkCount = faissContext.length;
     const context = faissContext.map(c => c.text).join('\n\n');
 
-    const prompt = `You are a helpful, expert RICS surveyor. Write a customer-facing reply to the question below using only the content provided. Do not make anything up. Refer to the RICS RED Book.\n\nFormat strictly as:\n- A clear headline\n- A short 2–3 sentence introduction\n- 3–5 helpful bullet points (each 1–2 sentences)\n- A closing summary\n\nUse clear English. Avoid legal jargon or complex phrasing. Use only the content provided.\n\nClient question: "${question}"\n\nRelevant content:\n${context}`;
+    const prompt = `You are a helpful, expert RICS surveyor. Write a customer-facing reply to the question below using only the content provided. Do not make anything up. Refer to the RICS RED Book.
+
+Format strictly as:
+- A clear headline
+- A short 2–3 sentence introduction
+- 3–5 helpful bullet points (each 1–2 sentences)
+- A closing summary
+
+Use clear English. Avoid legal jargon or complex phrasing. Use only the content provided.
+
+Client question: "${question}"
+
+Relevant content:
+${context}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -55,14 +68,14 @@ app.post('/ask', async (req, res) => {
 
     const openaiAnswer = completion.choices[0].message.content;
 
-    const emailFooter = '\n\n' +
+    const footer = '\n\n' +
       '© AIVS Software Limited. All rights reserved.\n' +
       'Mob: 07968 184624 | Web: AIVS.uk\n' +
       'The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice. ' +
       'AIVS Software Limited accepts no liability for any action taken based on its contents.\n' +
       `id ${chunkCount}c`;
 
-    const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}${emailFooter}`;
+    const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}${footer}`;
 
     if (email && email.includes('@')) {
       try {
@@ -139,4 +152,5 @@ app.get('/assistant', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🟢 Property Assistant running
+  console.log(`🟢 Property Assistant running on port ${PORT}`);
+});
