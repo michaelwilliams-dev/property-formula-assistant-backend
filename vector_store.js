@@ -1,12 +1,12 @@
 // vector_store.js
-// ISO Timestamp: 🕒 2025-08-01T18:00:00Z (Production-ready – index load logging included)
+// ISO Timestamp: 🕒 2025-08-04T20:00:00Z – Top-3 limit removed for full semantic filtering
 
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { OpenAI } from 'openai';
 
-console.log("🟢 vector_store.js loaded: using /mnt/data/vector_index_blog.json");
+console.log("🟢 vector_store.js loaded: using /mnt/data/vector_index.json");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,7 +47,9 @@ export async function searchIndex(rawQuery, index) {
     return { ...item, score: dot };
   });
 
-  return scores.sort((a, b) => b.score - a.score).slice(0, 3); // return top 3 only
+  const sorted = scores.sort((a, b) => b.score - a.score);
+  console.log(`🔢 Total scored chunks returned: ${sorted.length}`);
+  return sorted; // ✅ no cap — filtering done by backend
 }
 
 function dotProduct(a, b) {
