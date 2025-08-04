@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { OpenAI } from 'openai';
 
-console.log("🟢 vector_store.js loaded: using /mnt/data/vector_index.json");
+console.log("🟢 vector_store.js loaded: using /mnt/data/vector_index_blog.json");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
