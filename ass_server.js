@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T20:45:00Z – FAISS-based answer + OpenAI-only follow-up as footer
+// ISO Timestamp: 🕒 2025-08-04T20:50:00Z – Removed emoji from PDF/Word/email footer heading
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -79,7 +79,7 @@ app.post('/ask', async (req, res) => {
 
     const extraAnswer = generalCompletion.choices[0].message.content;
 
-    const footer = `\n\n---\n Additional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${chunkCount}c`;
+    const footer = `\n\n---\nAdditional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${chunkCount}c`;
 
     const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer}${footer}`;
 
@@ -157,3 +157,4 @@ app.get('/assistant', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🔵 Property Assistant running on port ${PORT}`);
 });
+
