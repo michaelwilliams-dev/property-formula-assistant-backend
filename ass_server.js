@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T19:10:00Z – Footer now embedded in Word, PDF, and email outputs
+// ISO Timestamp: 🕒 2025-08-04T19:45:00Z – Dynamic chunk count added to footer
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -30,7 +30,8 @@ async function queryFaissIndex(question) {
   const index = await loadIndex();
   const matches = await searchIndex(question, index);
   const filtered = matches.filter(match => match.score >= 0.03);
-  return filtered.map(match => match.text);
+  console.log(`🔍 Assistant used ${filtered.length} chunks (score ≥ 0.03)`);
+  return filtered.map(match => ({ text: match.text, score: match.score }));
 }
 
 app.post('/ask', async (req, res) => {
@@ -41,25 +42,10 @@ app.post('/ask', async (req, res) => {
     const timestamp = new Date().toISOString();
 
     const faissContext = await queryFaissIndex(question);
-    const context = [...new Set(faissContext.map(text => text.trim()))]
-      .filter(text => text.length > 30)
-      .join('\n\n');
+    const chunkCount = faissContext.length;
+    const context = faissContext.map(c => c.text).join('\n\n');
 
-    const prompt = `You are an expert RICS property surveyor. Based only on the provided content, write a clear, structured, public-friendly answer to the client's question below. 
-
-Your reply must include:
-- A headline
-- A short introduction
-- 2–4 bullet points
-- A brief wrap-up
-
-Do not include legal references. Avoid jargon. Use plain English.
-If the content does not contain an answer, say so clearly.
-
-Client question: "${question}"
-
-Relevant content:
-${context}`;
+    const prompt = `You are a helpful, expert RICS surveyor. Write a customer-facing reply to the question below using only the content provided. Do not make anything up. Refer to the RICS RED Book.\n\nFormat strictly as:\n- A clear headline\n- A short 2–3 sentence introduction\n- 3–5 helpful bullet points (each 1–2 sentences)\n- A closing summary\n\nUse clear English. Avoid legal jargon or complex phrasing. Use only the content provided.\n\nClient question: "${question}"\n\nRelevant content:\n${context}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -73,20 +59,19 @@ ${context}`;
       '© AIVS Software Limited. All rights reserved.\n' +
       'Mob: 07968 184624 | Web: AIVS.uk\n' +
       'The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice. ' +
-      'AIVS Software Limited accepts no liability for any action taken based on its contents.';
+      'AIVS Software Limited accepts no liability for any action taken based on its contents.\n' +
+      `id ${chunkCount}c`;
 
-    const finalResponse = `🏠 Property Assistant Response\n🕒 Generated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}${emailFooter}`;
+    const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}${emailFooter}`;
 
     if (email && email.includes('@')) {
       try {
-        // PDF generation
         const pdfDoc = new PDFDocument();
         let pdfBuffer = Buffer.alloc(0);
         pdfDoc.on('data', chunk => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
         pdfDoc.text(finalResponse);
         pdfDoc.end();
 
-        // Word generation
         const doc = new Document({
           sections: [
             {
@@ -154,5 +139,4 @@ app.get('/assistant', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🟢 Property Assistant running on port ${PORT}`);
-});
+  console.log(`🟢 Property Assistant running
