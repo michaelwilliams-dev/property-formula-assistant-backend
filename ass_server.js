@@ -98,8 +98,20 @@ ${openaiAnswer || '[No AI answer generated]'}`;
               From: { Email: "noreply@securemaildrop.uk", Name: "Secure Maildrop" },
               To: [{ Email: email }],
               Subject: `Your Property Assistant Answer`,
-              TextPart: finalResponse,
-              HTMLPart: finalResponse.split('\n').map(line => `<p>${line}</p>`).join(''),
+              TextPart:
+                finalResponse + '\n\n' +
+                '© AIVS Software Limited. All rights reserved.\n' +
+                'Mob: 07968 184624 | Web: AIVS.uk\n' +
+                'The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice. AIVS Software Limited accepts no liability for any action taken based on its contents.',
+              HTMLPart:
+                finalResponse.split('\n').map(line => `<p>${line}</p>`).join('') +
+                `<p style="font-size: 0.8em; color: #888;">
+                  © AIVS Software Limited. All rights reserved.<br>
+                  <strong>Mob:</strong> 07968 184624 &nbsp; | &nbsp;
+                  <strong>Web:</strong> <a href="https://aivs.uk" target="_blank">AIVS.uk</a><br>
+                  The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice.
+                  AIVS Software Limited accepts no liability for any action taken based on its contents.
+                </p>`,
               Attachments: [
                 {
                   ContentType: "application/pdf",
