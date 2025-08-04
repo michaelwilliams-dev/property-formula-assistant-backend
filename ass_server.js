@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T19:50:00Z – Fixed structure + dynamic chunk count footer
+// ISO Timestamp: 🕒 2025-08-04T20:20:00Z – Context capped by token budget (~6K) to avoid GPT-4 limit
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -26,12 +26,34 @@ app.use(bodyParser.json());
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+function estimateTokens(text) {
+  return Math.ceil(text.split(/\s+/).length * 1.3);
+}
+
 async function queryFaissIndex(question) {
   const index = await loadIndex();
   const matches = await searchIndex(question, index);
   const filtered = matches.filter(match => match.score >= 0.03);
-  console.log(`🔍 Assistant used ${filtered.length} chunks (score ≥ 0.03)`);
-  return filtered.map(match => ({ text: match.text, score: match.score }));
+
+  let context = '';
+  let chunkCount = 0;
+  let tokenCount = 0;
+  const maxTokens = 6000;
+
+  for (const match of filtered) {
+    const chunkText = match.text.trim();
+    const chunkTokens = estimateTokens(chunkText);
+
+    if (tokenCount + chunkTokens > maxTokens) break;
+
+    context += chunkText + '\n\n';
+    tokenCount += chunkTokens;
+    chunkCount++;
+  }
+
+  console.log(`🔍 Assistant using ${chunkCount} chunks (${tokenCount} tokens)`);
+
+  return { context: context.trim(), chunkCount };
 }
 
 app.post('/ask', async (req, res) => {
@@ -40,10 +62,7 @@ app.post('/ask', async (req, res) => {
 
   try {
     const timestamp = new Date().toISOString();
-
-    const faissContext = await queryFaissIndex(question);
-    const chunkCount = faissContext.length;
-    const context = faissContext.map(c => c.text).join('\n\n');
+    const { context, chunkCount } = await queryFaissIndex(question);
 
     const prompt = `You are a helpful, expert RICS surveyor. Write a customer-facing reply to the question below using only the content provided. Do not make anything up. Refer to the RICS RED Book.
 
