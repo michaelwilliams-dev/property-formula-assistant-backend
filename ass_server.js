@@ -79,7 +79,7 @@ app.post('/ask', async (req, res) => {
 
     const extraAnswer = generalCompletion.choices[0].message.content;
 
-    const footer = `\n\n---\n📎 Additional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${chunkCount}c`;
+    const footer = `\n\n---\n Additional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${chunkCount}c`;
 
     const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer}${footer}`;
 
