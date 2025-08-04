@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T08:15:00Z – Assistant with /vector-index restored
+// ISO Timestamp: 🕒 2025-08-03T18:40:00Z – Assistant with formatted public output
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -130,29 +130,16 @@ ${openaiAnswer || '[No AI answer generated]'}`;
   }
 });
 
-// ✅ Blog backend support — share vector index
-app.get('/vector-index', async (req, res) => {
-  try {
-    const index = await loadIndex();
-    res.json({ vectors: index });
-  } catch (err) {
-    console.error('❌ Failed to return vector index:', err.message);
-    res.status(500).json({ error: 'Failed to return vector index' });
-  }
+app.get('/', (req, res) => {
+  res.send('✅ Property Assistant backend is live.');
 });
 
-// ✅ Serve assistant.html and fallback route
 app.get('/assistant.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'assistant.html'));
 });
 
 app.get('/assistant', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'assistant.html'));
-});
-
-// ✅ Root
-app.get('/', (req, res) => {
-  res.send('✅ Property Assistant backend is live.');
 });
 
 app.listen(PORT, () => {
