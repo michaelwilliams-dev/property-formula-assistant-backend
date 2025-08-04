@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T20:20:00Z – Context capped by token budget (~6K) to avoid GPT-4 limit
+// ISO Timestamp: 🕒 2025-08-04T20:45:00Z – FAISS-based answer + OpenAI-only follow-up as footer
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -43,16 +43,13 @@ async function queryFaissIndex(question) {
   for (const match of filtered) {
     const chunkText = match.text.trim();
     const chunkTokens = estimateTokens(chunkText);
-
     if (tokenCount + chunkTokens > maxTokens) break;
-
     context += chunkText + '\n\n';
     tokenCount += chunkTokens;
     chunkCount++;
   }
 
   console.log(`🔍 Assistant using ${chunkCount} chunks (${tokenCount} tokens)`);
-
   return { context: context.trim(), chunkCount };
 }
 
@@ -64,20 +61,7 @@ app.post('/ask', async (req, res) => {
     const timestamp = new Date().toISOString();
     const { context, chunkCount } = await queryFaissIndex(question);
 
-    const prompt = `You are a helpful, expert RICS surveyor. Write a customer-facing reply to the question below using only the content provided. Do not make anything up. Refer to the RICS RED Book.
-
-Format strictly as:
-- A clear headline
-- A short 2–3 sentence introduction
-- 3–5 helpful bullet points (each 1–2 sentences)
-- A closing summary
-
-Use clear English. Avoid legal jargon or complex phrasing. Use only the content provided.
-
-Client question: "${question}"
-
-Relevant content:
-${context}`;
+    const prompt = `You are a helpful, expert RICS surveyor. Write a customer-facing reply to the question below using only the content provided. Do not make anything up. Refer to the RICS RED Book.\n\nFormat strictly as:\n- A clear headline\n- A short 2–3 sentence introduction\n- 3–5 helpful bullet points (each 1–2 sentences)\n- A closing summary\n\nUse clear English. Avoid legal jargon or complex phrasing. Use only the content provided.\n\nClient question: "${question}"\n\nRelevant content:\n${context}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -87,14 +71,17 @@ ${context}`;
 
     const openaiAnswer = completion.choices[0].message.content;
 
-    const footer = '\n\n' +
-      '© AIVS Software Limited. All rights reserved.\n' +
-      'Mob: 07968 184624 | Web: AIVS.uk\n' +
-      'The content of this message is provided as guidance only and should not be relied upon as a substitute for professional advice. ' +
-      'AIVS Software Limited accepts no liability for any action taken based on its contents.\n' +
-      `id ${chunkCount}c`;
+    const generalCompletion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: question }],
+      temperature: 0.4
+    });
 
-    const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer || '[No AI answer generated]'}${footer}`;
+    const extraAnswer = generalCompletion.choices[0].message.content;
+
+    const footer = `\n\n---\n📎 Additional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${chunkCount}c`;
+
+    const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer}${footer}`;
 
     if (email && email.includes('@')) {
       try {
@@ -115,7 +102,7 @@ ${context}`;
         });
         const docBuffer = await Packer.toBuffer(doc);
 
-        const mailjetRes = await fetch("https://api.mailjet.com/v3.1/send", {
+        await fetch("https://api.mailjet.com/v3.1/send", {
           method: "POST",
           headers: {
             "Authorization": "Basic " + Buffer.from(`${process.env.MJ_APIKEY_PUBLIC}:${process.env.MJ_APIKEY_PRIVATE}`).toString("base64"),
@@ -143,9 +130,6 @@ ${context}`;
             }]
           })
         });
-
-        const mailResponse = await mailjetRes.json();
-        console.log("📨 Mailjet response:", mailjetRes.status, mailResponse);
       } catch (err) {
         console.error("❌ Mailjet send failed:", err.message);
       }
@@ -159,7 +143,7 @@ ${context}`;
 });
 
 app.get('/', (req, res) => {
-  res.send('✅ Property Assistant backend is live.');
+  res.send('Property Assistant backend is live.');
 });
 
 app.get('/assistant.html', (req, res) => {
@@ -171,5 +155,5 @@ app.get('/assistant', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🟢 Property Assistant running on port ${PORT}`);
+  console.log(`🔵 Property Assistant running on port ${PORT}`);
 });
