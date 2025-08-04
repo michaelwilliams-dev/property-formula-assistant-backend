@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T18:35:00Z – Assistant with formatted public output + Email Footer Branding
+// ISO Timestamp: 🕒 2025-08-04T18:35:00Z – Assistant with formatted public output + Email Footer Branding + Word readability fix
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -45,21 +45,7 @@ app.post('/ask', async (req, res) => {
       .filter(text => text.length > 30)
       .join('\n\n');
 
-    const prompt = `You are an expert RICS property surveyor. Based only on the provided content, write a clear, structured, public-friendly answer to the client's question below. 
-
-Your reply must include:
-- A headline
-- A short introduction
-- 2–4 bullet points
-- A brief wrap-up
-
-Do not include legal references. Avoid jargon. Use plain English.
-If the content does not contain an answer, say so clearly.
-
-Client question: "${question}"
-
-Relevant content:
-${context}`;
+    const prompt = `You are an expert RICS property surveyor. Based only on the provided content, write a clear, structured, public-friendly answer to the client's question below. \n\nYour reply must include:\n- A headline\n- A short introduction\n- 2–4 bullet points\n- A brief wrap-up\n\nDo not include legal references. Avoid jargon. Use plain English.\nIf the content does not contain an answer, say so clearly.\n\nClient question: "${question}"\n\nRelevant content:\n${context}`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -80,9 +66,22 @@ ${context}`;
         pdfDoc.end();
 
         const doc = new Document({
-          sections: [{ children: [new Paragraph({ children: [new TextRun(finalResponse)] })] }],
+          sections: [
+            {
+              children: finalResponse.split('\n').map(line =>
+                new Paragraph({ children: [new TextRun(line)] })
+              )
+            }
+          ]
         });
+
         const docBuffer = await Packer.toBuffer(doc);
+
+        console.log("📤 SENDING EMAIL CONTENT:", {
+          subject: `Your Property Assistant Answer`,
+          text: finalResponse,
+          html: finalResponse.split('\n').map(line => `<p>${line}</p>`).join('')
+        });
 
         const mailjetRes = await fetch("https://api.mailjet.com/v3.1/send", {
           method: "POST",
@@ -154,3 +153,4 @@ app.get('/assistant', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🟢 Property Assistant running on port ${PORT}`);
 });
+
