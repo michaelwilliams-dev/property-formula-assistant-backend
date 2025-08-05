@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-05T08:30:00Z – Dynamic index ID added: size, total chunks, chunks used
+// ISO Timestamp: 🕒 2025-08-05T10:45:00Z – Added name header + clean structure
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -31,7 +31,9 @@ function estimateTokens(text) {
 }
 
 app.post('/ask', async (req, res) => {
-  const { question, email } = req.body;
+  const { question, email, firstName, lastName } = req.body;
+  console.log("📥 Assistant form data received:", { question, email, firstName, lastName });
+
   if (!question) return res.status(400).json({ error: 'Missing question' });
 
   try {
@@ -74,18 +76,27 @@ app.post('/ask', async (req, res) => {
     });
 
     const extraAnswer = generalCompletion.choices[0].message.content;
-
     const dynamicId = `${fileSizeMB}${totalChunks}${chunkCount}c`;
 
     const footer = `\n\n---\nAdditional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${dynamicId}`;
 
-    const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer}${footer}`;
+    let header = '';
+    if (firstName && lastName) {
+      const fullName = `${firstName} ${lastName}`.trim();
+      header = `Property Assistant Response\nRequested by ${fullName}\nGenerated at: ${timestamp}\n\n`;
+    } else {
+      header = `Property Assistant Response\nGenerated at: ${timestamp}\n\n`;
+    }
+
+    const finalResponse = `${header}${openaiAnswer}${footer}`;
 
     if (email && email.includes('@')) {
       try {
         const pdfDoc = new PDFDocument();
         let pdfBuffer = Buffer.alloc(0);
-        pdfDoc.on('data', chunk => { pdfBuffer = Buffer.concat([pdfBuffer, chunk]); });
+        pdfDoc.on('data', chunk => {
+          pdfBuffer = Buffer.concat([pdfBuffer, chunk]);
+        });
         pdfDoc.text(finalResponse);
         pdfDoc.end();
 
@@ -98,6 +109,7 @@ app.post('/ask', async (req, res) => {
             }
           ]
         });
+
         const docBuffer = await Packer.toBuffer(doc);
 
         await fetch("https://api.mailjet.com/v3.1/send", {
@@ -135,7 +147,7 @@ app.post('/ask', async (req, res) => {
 
     res.json({ question, answer: finalResponse, timestamp });
   } catch (err) {
-    console.error('❌ Assistant request failed:', err);
+    console.error('❌ Assistant request failed:', err.stack || err.message);
     res.status(500).json({ error: 'Assistant request failed' });
   }
 });
@@ -155,4 +167,3 @@ app.get('/assistant', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🔵 Property Assistant running on port ${PORT}`);
 });
-
