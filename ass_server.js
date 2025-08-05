@@ -1,5 +1,5 @@
 // ass_server.js
-// ISO Timestamp: 🕒 2025-08-04T20:50:00Z – Removed emoji from PDF/Word/email footer heading
+// ISO Timestamp: 🕒 2025-08-05T08:30:00Z – Dynamic index ID added: size, total chunks, chunks used
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -30,36 +30,32 @@ function estimateTokens(text) {
   return Math.ceil(text.split(/\s+/).length * 1.3);
 }
 
-async function queryFaissIndex(question) {
-  const index = await loadIndex();
-  const matches = await searchIndex(question, index);
-  const filtered = matches.filter(match => match.score >= 0.03);
-
-  let context = '';
-  let chunkCount = 0;
-  let tokenCount = 0;
-  const maxTokens = 6000;
-
-  for (const match of filtered) {
-    const chunkText = match.text.trim();
-    const chunkTokens = estimateTokens(chunkText);
-    if (tokenCount + chunkTokens > maxTokens) break;
-    context += chunkText + '\n\n';
-    tokenCount += chunkTokens;
-    chunkCount++;
-  }
-
-  console.log(`🔍 Assistant using ${chunkCount} chunks (${tokenCount} tokens)`);
-  return { context: context.trim(), chunkCount };
-}
-
 app.post('/ask', async (req, res) => {
   const { question, email } = req.body;
   if (!question) return res.status(400).json({ error: 'Missing question' });
 
   try {
     const timestamp = new Date().toISOString();
-    const { context, chunkCount } = await queryFaissIndex(question);
+    const { vectors, fileSizeMB, totalChunks } = await loadIndex();
+
+    const matches = await searchIndex(question, vectors);
+    const filtered = matches.filter(match => match.score >= 0.03);
+
+    let context = '';
+    let chunkCount = 0;
+    let tokenCount = 0;
+    const maxTokens = 6000;
+
+    for (const match of filtered) {
+      const chunkText = match.text.trim();
+      const chunkTokens = estimateTokens(chunkText);
+      if (tokenCount + chunkTokens > maxTokens) break;
+      context += chunkText + '\n\n';
+      tokenCount += chunkTokens;
+      chunkCount++;
+    }
+
+    console.log(`🔍 Assistant using ${chunkCount} chunks (${tokenCount} tokens)`);
 
     const prompt = `You are a helpful, expert RICS surveyor. Write a customer-facing reply to the question below using only the content provided. Do not make anything up. Refer to the RICS RED Book.\n\nFormat strictly as:\n- A clear headline\n- A short 2–3 sentence introduction\n- 3–5 helpful bullet points (each 1–2 sentences)\n- A closing summary\n\nUse clear English. Avoid legal jargon or complex phrasing. Use only the content provided.\n\nClient question: "${question}"\n\nRelevant content:\n${context}`;
 
@@ -79,7 +75,9 @@ app.post('/ask', async (req, res) => {
 
     const extraAnswer = generalCompletion.choices[0].message.content;
 
-    const footer = `\n\n---\nAdditional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${chunkCount}c`;
+    const dynamicId = `${fileSizeMB}${totalChunks}${chunkCount}c`;
+
+    const footer = `\n\n---\nAdditional GPT-4 Search (no indexed content):\n\n${extraAnswer}\n\n© AIVS Software Limited. All rights reserved.\nMob: 07968 184624 | Web: AIVS.uk\nid ${dynamicId}`;
 
     const finalResponse = `Property Assistant Response\nGenerated at: ${timestamp}\n\n${openaiAnswer}${footer}`;
 
