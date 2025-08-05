@@ -1,10 +1,11 @@
 // vector_store.js
-// ISO Timestamp: 🕒 2025-08-04T20:00:00Z – Top-3 limit removed for full semantic filtering
+// ISO Timestamp: 🕒 2025-08-05T08:15:00Z – Added dynamic index size and chunk count
 
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { OpenAI } from 'openai';
+import { statSync } from 'fs';
 
 console.log("🟢 vector_store.js loaded: using /mnt/data/vector_index.json");
 
@@ -14,13 +15,23 @@ const __dirname = path.dirname(__filename);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function loadIndex() {
-  const indexPath = '/mnt/data/vector_index.json'; // hardcoded for Render disk
+  const indexPath = '/mnt/data/vector_index.json';
   const data = await fs.readFile(indexPath, 'utf-8');
   const parsed = JSON.parse(data);
-  const count = parsed.vectors?.length || parsed.length || 0;
-  console.log(`📦 Loaded vector index with ${count} chunks from disk`);
+  const vectors = parsed.vectors || parsed; // support both wrapped and raw formats
 
-  return parsed.vectors || parsed; // support both wrapped and plain array formats
+  const totalChunks = vectors.length || 0;
+  const fileSizeBytes = statSync(indexPath).size;
+  const fileSizeMB = Math.round(fileSizeBytes / (1024 * 1024));
+
+  console.log(`📦 Loaded vector index with ${totalChunks} chunks`);
+  console.log(`📦 Index file size: ${fileSizeMB}MB`);
+
+  return {
+    vectors,
+    totalChunks,
+    fileSizeMB
+  };
 }
 
 export async function searchIndex(rawQuery, index) {
@@ -49,7 +60,7 @@ export async function searchIndex(rawQuery, index) {
 
   const sorted = scores.sort((a, b) => b.score - a.score);
   console.log(`🔢 Total scored chunks returned: ${sorted.length}`);
-  return sorted; // ✅ no cap — filtering done by backend
+  return sorted;
 }
 
 function dotProduct(a, b) {
