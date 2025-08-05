@@ -6,17 +6,30 @@
   <meta charset="UTF-8" />
   <title>Property Assistant</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    h2 {
+      color: #4e65ac; /* AIVS tone */
+      text-align: center;
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
   <h2>Property Assistant</h2>
-  <p>🕒 ISO Timestamp: <span id="iso-timestamp"></span></p>
+  <p style="text-align: center;">🕒 ISO Timestamp: <span id="iso-timestamp"></span></p>
 
-  <input type="text" id="question" placeholder="Ask your question..." />
-  <input type="email" id="email" placeholder="Your email (optional)" />
-  <button id="ask">Ask the Assistant</button>
+  <div style="max-width: 600px; margin: 0 auto;">
+    <input type="text" id="question" placeholder="Ask your question..." style="width: 100%; margin-bottom: 10px;" />
+    <input type="email" id="email" placeholder="Your email (optional)" style="width: 100%; margin-bottom: 10px;" />
+    <button id="ask" style="width: 100%;">Ask the Assistant</button>
 
-  <pre id="response"></pre>
+    <pre id="response" style="margin-top: 20px; background: #f4f4f4; padding: 1em; border-radius: 6px;"></pre>
+  </div>
 
+  <script>
+    // Set ISO timestamp
+    document.getElementById("iso-timestamp").textContent = new Date().toISOString();
+  </script>
   <script src="assistant-script.js"></script>
 </body>
 </html>
